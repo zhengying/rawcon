@@ -5,15 +5,19 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"sync"
-	"time"
 )
 
 type Raw struct {
+	Mixed  bool
 	NoHTTP bool
+	TLS    bool
 	Host   string
 	DSCP   int
 	IgnRST bool
+	Hosts  []string
+	Dummy  bool
 }
 
 type callback func()
@@ -32,8 +36,6 @@ func (m *myMutex) run(f callback) {
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-var src = rand.NewSource(time.Now().UnixNano())
-
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
@@ -43,9 +45,9 @@ const (
 func randStringBytesMaskImprSrc(n int) string {
 	b := make([]byte, n)
 	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
+	for i, cache, remain := n-1, rand.Int63(), letterIdxMax; i >= 0; {
 		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
+			cache, remain = rand.Int63(), letterIdxMax
 		}
 		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
 			b[i] = letterBytes[idx]
@@ -94,12 +96,12 @@ func init() {
 }
 
 func buildHTTPRequest(headers string) string {
-	return fmt.Sprintf(requestFormat, randStringBytesMaskImprSrc(10), headers, (src.Int63()%65536 + 10485760))
+	return fmt.Sprintf(requestFormat, randStringBytesMaskImprSrc(10), headers, (rand.Int63()%65536 + 10485760))
 	// return fmt.Sprintf(requestFormat, randStringBytesMaskImprSrc(10), headers, 0)
 }
 
 func buildHTTPResponse(headers string) string {
-	return fmt.Sprintf(responseFromat, headers, (src.Int63()%65536 + 104857600))
+	return fmt.Sprintf(responseFromat, headers, (rand.Int63()%65536 + 104857600))
 	// return fmt.Sprintf(responseFromat, headers, 0)
 }
 
@@ -130,4 +132,17 @@ const (
 	waithttpreq = 1
 	httprepsent = 2
 	established = 3
+)
+
+func getSrcIPForDstIP(dstip net.IP) (srcip net.IP, err error) {
+	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{IP: dstip, Port: 80})
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	return conn.LocalAddr().(*net.UDPAddr).IP, nil
+}
+
+var (
+	ipv4AddrAny = net.IPv4(0, 0, 0, 0)
 )
