@@ -19,9 +19,9 @@ import (
 	ran "math/rand"
 
 	"github.com/google/gopacket"
+	utils "github.com/zhengying/ccsexyz_utils"
 	"github.com/zhengying/gopacket/layers"
 	"github.com/zhengying/gopacket/pcap"
-	"github.com/zhengying/kcpraw/utils"
 	"golang.org/x/net/ipv4"
 )
 
